@@ -1,0 +1,8 @@
+python-dotenv~=1.0.1
+discord.py~=2.5.0 
+jishaku~=2.6.0
+discord-ext-menus @ git+https://github.com/Rapptz/discord-ext-menus@8686b5d1bbc1d3c862292eb436ab630d6e9c9b53
+asyncpg~=0.30.0
+SQLAlchemy[asyncio]~=2.0.38 
+alembic~=1.14.1
+pytz~=2025.1
