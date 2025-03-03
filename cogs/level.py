@@ -112,6 +112,9 @@ class Level(commands.GroupCog, group_name="level"):
 
     @commands.hybrid_command(name="levelrole", aliases=["lr"])    
     async def level_role(self, ctx: commands.Context):
+        """
+        Show level role
+        """
         if not self.mod_only(ctx):
             return await ctx.reply("You are not allowed to use this command", ephemeral=True)
         embed = discord.Embed(title="Level roles", color=discord.Colour.random())
@@ -122,6 +125,9 @@ class Level(commands.GroupCog, group_name="level"):
         
     @commands.hybrid_command(name="setlevelrole", aliases=["slr"])
     async def set_level_role(self, ctx: commands.Context, role: discord.Role, level: int):
+        """
+        Set role to assign at specified level, set -1 to delete
+        """
         if not self.mod_only(ctx):
             return await ctx.reply("You are not allowed to use this command", ephemeral=True)
         if level < -1:
