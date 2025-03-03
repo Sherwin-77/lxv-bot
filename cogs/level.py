@@ -16,9 +16,6 @@ import models
 if TYPE_CHECKING:
     from bot import LXVBot
 
-# TODO dev
-
-
 logger = logging.getLogger(__name__)
 
 class Level(commands.GroupCog, group_name="level"):
