@@ -113,7 +113,7 @@ class Level(commands.GroupCog, group_name="level"):
     @commands.hybrid_command(name="levelrole", aliases=["lr"])    
     async def level_role(self, ctx: commands.Context):
         if not self.mod_only(ctx):
-            return ctx.reply("You are not allowed to use this command", ephemeral=True)
+            return await ctx.reply("You are not allowed to use this command", ephemeral=True)
         embed = discord.Embed(title="Level roles", color=discord.Colour.random())
         for level, role_id in self.role_assigns:
             embed.add_field(name=f"Level {level}", value=f"<@&{role_id}>", inline=False)
@@ -123,9 +123,9 @@ class Level(commands.GroupCog, group_name="level"):
     @commands.hybrid_command(name="setlevelrole", aliases=["slr"])
     async def set_level_role(self, ctx: commands.Context, role: discord.Role, level: int):
         if not self.mod_only(ctx):
-            return ctx.reply("You are not allowed to use this command", ephemeral=True)
+            return await ctx.reply("You are not allowed to use this command", ephemeral=True)
         if level < -1:
-            return ctx.reply("Invalid level", mention_author=False)
+            return await ctx.reply("Invalid level", ephemeral=True)
         
         async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
         async with async_session() as session:
