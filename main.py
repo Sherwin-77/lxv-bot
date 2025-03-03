@@ -34,7 +34,7 @@ def main():
         async with ctx.typing():
             async with bot.engine.begin() as conn:
                 cursor = await conn.execute(text(query))
-                value = cursor.fetchall()
+                value = cursor.scalars().all()
         await ctx.send(embed=discord.Embed(title="Result", description=value, color=discord.Colour.random()))
 
     @bot.command(hidden=True)
