@@ -93,3 +93,6 @@ class Role(commands.GroupCog, group_name="customrole"):
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
         await role.edit(name=name)
         await ctx.reply(f"Set role name to {role.name}")
+
+async def setup(bot: LXVBot):
+    await bot.add_cog(Role(bot))
