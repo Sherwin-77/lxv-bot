@@ -9,6 +9,7 @@ from discord.ext import commands
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+import check
 import consts
 import models
 
@@ -81,12 +82,11 @@ class Level(commands.GroupCog, group_name="level"):
             return
 
     @commands.command(name="levelrole", aliases=["lr"])
+    @check.is_mod()
     async def level_role(self, ctx: commands.Context):
         """
         Show level role
         """
-        if not self.bot.mod_only(ctx):
-            return await ctx.reply("You are not allowed to use this command")
         embed = discord.Embed(title="Level roles", color=discord.Colour.random())
         for level, role_id in self.role_assigns:
             embed.add_field(name=f"Level {level}", value=f"<@&{role_id}>", inline=False)
@@ -94,12 +94,11 @@ class Level(commands.GroupCog, group_name="level"):
         await ctx.reply(embed=embed)
 
     @commands.command(name="setlevelrole", aliases=["slr"])
+    @check.is_mod()
     async def set_level_role(self, ctx: commands.Context, role: discord.Role, level: int):
         """
         Set role to assign at specified level, set -1 to delete
         """
-        if not self.bot.mod_only(ctx):
-            return await ctx.reply("You are not allowed to use this command")
         if level < -1:
             return await ctx.reply("Invalid level")
 

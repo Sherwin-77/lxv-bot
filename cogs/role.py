@@ -4,9 +4,11 @@ from typing import TYPE_CHECKING, Dict, Optional
 
 import discord
 from discord.ext import commands, tasks
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+import check
+import consts
 import models
 from utils.view_util import ConfirmEmbed
 
@@ -20,6 +22,9 @@ class Role(commands.GroupCog, group_name="customrole"):
     def __init__(self, bot: LXVBot):
         self.bot = bot
         self._custom_role_cache: Dict[int, int] = {}
+
+    def cog_check(self, ctx: commands.Context):
+        return ctx.guild is not None and ctx.guild.id == consts.GUILD_ID
 
     async def cog_load(self):
         self.refresh_cache.start()
@@ -43,11 +48,37 @@ class Role(commands.GroupCog, group_name="customrole"):
                 
         return None
 
-    @commands.command(name="assignrole", aliases=["ar"])
-    async def assign_role(self, ctx: commands.Context, role: discord.Role, user: discord.User):
-        if not self.bot.mod_only(ctx):
-            return await ctx.reply("You are not allowed to use this command")
+    @commands.command(name="createassignrole", aliases=["car"])
+    @check.is_mod()
+    async def create_role(self, ctx: commands.Context, user: discord.User, above_role: Optional[discord.Role] = None, *, name: str):
+        if ctx.guild is None:
+            return
+        
+        role = await ctx.guild.create_role(name=name)
+        await role.edit(position=above_role.position if above_role is not None else 0)
 
+    @commands.command("removeassignrole", aliases=["rar"])
+    @check.is_mod()
+    async def remove_role(self, ctx: commands.Context, user: discord.User, delete_role: bool = False):
+        if ctx.guild is None:
+            return
+        role_id = await self.retrieve_custom_role_id(user.id)
+        if role_id is None:
+            return await ctx.reply("User does not have a custom role")
+        
+        role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
+        async_session = async_sessionmaker(self.bot.engine)
+        async with async_session() as session:
+            async with session.begin():
+                await session.execute(delete(models.CustomRole).where(models.CustomRole.user_id == user.id))
+
+        if delete_role:
+            await role.delete()
+        await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role {role.mention} from user {user.mention}")
+
+    @commands.command(name="assignrole", aliases=["ar"])
+    @check.is_mod()
+    async def assign_role(self, ctx: commands.Context, role: discord.Role, user: discord.User):
         async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
         async with async_session() as session:
             async with session.begin():

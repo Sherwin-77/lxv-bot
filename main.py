@@ -9,6 +9,7 @@ from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from bot import LXVBot
+import check
 import consts
 import models
 
@@ -76,12 +77,10 @@ def main():
         await ctx.reply(f"Failed to send: `{error}`\n" f"`{type(error)}`")
 
     @bot.command(name="setmod", aliases=["sm"])
+    @check.is_mod()
     async def set_mod(ctx: commands.Context, role: discord.Role, remove: bool = False):
         if ctx.guild is None or ctx.guild.id != consts.GUILD_ID:
             return await ctx.reply("This command can only be used in the main server")
-        
-        if not bot.mod_only(ctx):
-            return await ctx.reply("You are not allowed to use this command")
         
         async_session = async_sessionmaker(bot.engine)
         if remove:
