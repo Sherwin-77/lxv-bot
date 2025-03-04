@@ -78,19 +78,19 @@ def main():
             return await ctx.reply("This command can only be used in the main server")
         
         if not bot.mod_only(ctx):
-            return await ctx.reply("You are not allowed to use this command", ephemeral=True)
+            return await ctx.reply("You are not allowed to use this command")
         
         async_session = async_sessionmaker(bot.engine)
         if remove:
             async with async_session() as session:
                 async with session.begin():
                     await session.execute(delete(models.Mod).where(models.Mod.id == role.id))
-            await ctx.reply(f"Removed role **{role.name}** from mods", ephemeral=True)
+            await ctx.reply(f"Removed role **{role.name}** from mods")
         else:
             async with async_session() as session:
                 async with session.begin():
                     session.add(models.Mod(id=role.id))
-            await ctx.reply(f"Set role **{role.name}** to mod", ephemeral=True)
+            await ctx.reply(f"Set role **{role.name}** to mod")
 
     @bot.event
     async def on_member_update(before: discord.Member, after: discord.Member):
