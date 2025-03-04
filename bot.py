@@ -8,10 +8,11 @@ from traceback import format_exception
 from typing import Any, Optional, Union
 
 import discord
-from discord.ext import commands
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from discord.ext import commands, tasks
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
+import models
 from utils import SimplePages, EmbedSource
 
 DEV = "dev"
@@ -70,6 +71,9 @@ class LXVBot(commands.Bot):
         self.xp_cooldowns = set()
         self.engine = create_async_engine(db_url, echo=self.is_dev)
 
+        self.mod_ids = set()
+        self.user_mods = set()
+
     @property
     def is_dev(self) -> bool:
         return self.bot_mode == DEV
@@ -79,6 +83,29 @@ class LXVBot(commands.Bot):
             return True
         
         return await super().is_owner(user)
+    
+    def is_mod(self, member: discord.Member, include_bot_owner: bool = True) -> bool:
+        if member.bot:
+            return False
+        if member.id in self.user_mods:
+            return True
+        allowed = False
+        if (include_bot_owner and self.owner.id == member.id) or member.guild_permissions.administrator:
+            allowed = True
+            self.user_mods.add(member.id)
+        else:
+            for r in member.roles:
+                if r.id in self.mod_ids:
+                    allowed = True
+                    self.user_mods.add(member.id)
+                    break
+        return allowed
+    
+    def mod_only(self, ctx: commands.Context, include_bot_owner: bool = True) -> bool:
+        if not isinstance(ctx.author, discord.Member):
+            return False
+
+        return self.is_mod(ctx.author, include_bot_owner)
     
     async def get_prefix(self, message: discord.Message, /):
         """|coro|
@@ -104,6 +131,12 @@ class LXVBot(commands.Bot):
         if self.is_dev:
             return ["test!"]
         return await super().get_prefix(message)
+    
+    async def get_setting(self):
+        async_session = async_sessionmaker(self.engine, expire_on_commit=False)
+        async with async_session() as session:
+            mods = await session.execute(select(models.Mod.id))
+            self.mod_ids = {row[0] for row in mods}
 
     async def setup_hook(self) -> None:
         if self.is_dev:
@@ -118,6 +151,11 @@ class LXVBot(commands.Bot):
 
         self.owner = self.get_user(436376194166816770) or await self.fetch_user(436376194166816770)
         logger.info("Application info loaded")
+
+        await self.get_setting()
+        logger.info("Setting loaded")
+
+        self.refresh_cache.start()
 
     async def close(self) -> None:
         await self.engine.dispose()
@@ -161,6 +199,10 @@ class LXVBot(commands.Bot):
         if message.author.bot:
             return
         return await super().on_message(message)
+    
+    @tasks.loop(minutes=1)
+    async def refresh_cache(self):
+        self.user_mods = set()
 
     
 def slash_is_enabled():

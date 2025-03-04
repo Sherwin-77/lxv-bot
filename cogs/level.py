@@ -1,12 +1,11 @@
 from __future__ import annotations
-from ast import alias
 import bisect
 import logging
 import re
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -18,51 +17,22 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class Level(commands.GroupCog, group_name="level"):
     def __init__(self, bot: LXVBot) -> None:
         self.bot = bot
-        self.guild = None
-        self.mod_ids = set()
-        self.user_mods = set()
         self.role_assigns = []
         self.role_level_ids = []
 
-    def is_mod(self, member: discord.Member, include_bot_owner: bool = True) -> bool:
-        if member.bot:
-            return False
-        if member.id in self.user_mods:
-            return True
-        allowed = False
-        if (include_bot_owner and self.bot.owner.id == member.id) or member.guild_permissions.administrator:
-            allowed = True
-            self.user_mods.add(member.id)
-        else:
-            for r in member.roles:
-                if r.id in self.mod_ids:
-                    allowed = True
-                    self.user_mods.add(member.id)
-                    break
-        return allowed
-
-    def mod_only(self, ctx, include_bot_owner: bool = True) -> bool:
-        return self.is_mod(ctx.author, include_bot_owner)
-    
     async def cog_check(self, ctx: commands.Context):
         return ctx.guild is not None and ctx.guild.id == consts.GUILD_ID
-    
-    async def cog_load(self):
-        if self.guild is None:
-            self.guild = self.bot.get_guild(consts.GUILD_ID) or await self.bot.fetch_guild(consts.GUILD_ID)
 
+    async def cog_load(self):
         await self.get_setting()
-        self.refresh_cache.start()
 
     async def get_setting(self):
         async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
         async with async_session() as session:
-            mods = await session.execute(select(models.Mod.id))
-            self.mod_ids = {row[0] for row in mods}
-
             self.role_assigns = []
             self.role_level_ids = []
             role_assigns = await session.execute(select(models.RoleAssign))
@@ -70,20 +40,20 @@ class Level(commands.GroupCog, group_name="level"):
                 bisect.insort(self.role_assigns, (row.level, row.role_id))
                 self.role_level_ids.append(row.role_id)
 
-    @tasks.loop(minutes=1)
-    async def refresh_cache(self):
-        self.user_mods = set()
-
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         if before.premium_since is not None and after.premium_since is None:
             pass
-    
+
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message): 
+    async def on_message(self, message: discord.Message):
         if message.guild is None:
             return
-        if message.author.id == consts.LEVEL_BOT_ID and message.channel.id == consts.LEVEL_UP_CHANNEL_ID and message.mentions:
+        if (
+            message.author.id == consts.LEVEL_BOT_ID
+            and message.channel.id == consts.LEVEL_UP_CHANNEL_ID
+            and message.mentions
+        ):
             user = message.mentions[0]
             if not isinstance(user, discord.Member):
                 return
@@ -110,29 +80,29 @@ class Level(commands.GroupCog, group_name="level"):
         if message.author.bot:
             return
 
-    @commands.hybrid_command(name="levelrole", aliases=["lr"])    
+    @commands.command(name="levelrole", aliases=["lr"])
     async def level_role(self, ctx: commands.Context):
         """
         Show level role
         """
-        if not self.mod_only(ctx):
+        if not self.bot.mod_only(ctx):
             return await ctx.reply("You are not allowed to use this command", ephemeral=True)
         embed = discord.Embed(title="Level roles", color=discord.Colour.random())
         for level, role_id in self.role_assigns:
             embed.add_field(name=f"Level {level}", value=f"<@&{role_id}>", inline=False)
-        
+
         await ctx.reply(embed=embed)
-        
-    @commands.hybrid_command(name="setlevelrole", aliases=["slr"])
+
+    @commands.command(name="setlevelrole", aliases=["slr"])
     async def set_level_role(self, ctx: commands.Context, role: discord.Role, level: int):
         """
         Set role to assign at specified level, set -1 to delete
         """
-        if not self.mod_only(ctx):
+        if not self.bot.mod_only(ctx):
             return await ctx.reply("You are not allowed to use this command", ephemeral=True)
         if level < -1:
             return await ctx.reply("Invalid level", ephemeral=True)
-        
+
         async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
         async with async_session() as session:
             async with session.begin():
@@ -152,6 +122,7 @@ class Level(commands.GroupCog, group_name="level"):
         else:
             await ctx.reply(f"Set role {role.mention} to level {level}", ephemeral=True)
         await self.get_setting()
+
 
 async def setup(bot: LXVBot):
     await bot.add_cog(Level(bot))
