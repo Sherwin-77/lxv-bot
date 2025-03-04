@@ -39,11 +39,11 @@ class General(commands.Cog):
         Yes ping
         """
         time0 = discord.utils.utcnow()
-        time1 = discord.utils.snowflake_time(ctx.message.id).replace(tzinfo=None)
+        time1 = discord.utils.snowflake_time(ctx.message.id)
         ping = round(self.bot.latency * 1000)
         message = await ctx.reply(f":ping_pong: Pong! in: {ping} ms", mention_author=False)
         time_diff1 = round((time1 - time0).microseconds / 1000)
-        time_diff2 = round((discord.utils.snowflake_time(message.id).replace(tzinfo=None) - time0).microseconds / 1000)
+        time_diff2 = round((discord.utils.snowflake_time(message.id) - time0).microseconds / 1000)
         db_ping = await self.bot.get_db_ping()
         await message.edit(
             content=f":ping_pong: Pong! in: {ping} ms\n"
