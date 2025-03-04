@@ -51,6 +51,9 @@ class Role(commands.GroupCog, group_name="customrole"):
     @commands.command(name="createassignrole", aliases=["car"])
     @check.is_mod()
     async def create_role(self, ctx: commands.Context, user: discord.User, above_role: Optional[discord.Role] = None, *, name: str):
+        """
+        Create and assign custom role from user, set above_role to reposition its role
+        """
         if ctx.guild is None:
             return
         
@@ -60,8 +63,12 @@ class Role(commands.GroupCog, group_name="customrole"):
     @commands.command("removeassignrole", aliases=["rar"])
     @check.is_mod()
     async def remove_role(self, ctx: commands.Context, user: discord.User, delete_role: bool = False):
+        """
+        Remove custom role from user, optionally delete the role
+        """
         if ctx.guild is None:
             return
+
         role_id = await self.retrieve_custom_role_id(user.id)
         if role_id is None:
             return await ctx.reply("User does not have a custom role")
