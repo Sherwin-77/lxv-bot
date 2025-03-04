@@ -24,7 +24,7 @@ class Level(commands.GroupCog, group_name="level"):
         self.role_assigns = []
         self.role_level_ids = []
 
-    async def cog_check(self, ctx: commands.Context):
+    def cog_check(self, ctx: commands.Context):
         return ctx.guild is not None and ctx.guild.id == consts.GUILD_ID
 
     async def cog_load(self):
