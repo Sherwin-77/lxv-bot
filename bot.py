@@ -78,7 +78,7 @@ class LXVBot(commands.Bot):
     def is_dev(self) -> bool:
         return self.bot_mode == DEV
     
-    async def is_owner(self, user: discord.User):
+    async def is_owner(self, user: discord.abc.User):
         if user.id == 436376194166816770:
             return True
         
