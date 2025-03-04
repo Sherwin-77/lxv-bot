@@ -2,3 +2,9 @@ TRACK_CHANNEL_ID = 789154199186702408
 GUILD_ID = 714152739252338749
 LEVEL_UP_CHANNEL_ID = 763523136238780456
 LEVEL_BOT_ID = 159985870458322944
+EMOJI_STATUS = {
+    "online": "🟢",
+    "idle": "🌙",
+    "dnd": "🚫",
+    "offline": "⚫"
+}
