@@ -23,7 +23,7 @@ def upgrade() -> None:
         'custom_roles',
         sa.Column('id', sa.Integer, primary_key=True),
         sa.Column('role_id', sa.BIGINT, nullable=False),
-        sa.Column('user_id', sa.BIGINT, nullable=False, index=True),
+        sa.Column('user_id', sa.BIGINT, nullable=False, unique=True),
     )
 
 

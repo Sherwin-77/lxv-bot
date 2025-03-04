@@ -9,4 +9,4 @@ class CustomRole(BaseModel):
 
     id: Mapped[int] = mapped_column(BIGINT, primary_key=True)
     role_id: Mapped[int] = mapped_column(BIGINT, nullable=False)
-    user_id: Mapped[int] = mapped_column(BIGINT, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(BIGINT, nullable=False, unique=True)
