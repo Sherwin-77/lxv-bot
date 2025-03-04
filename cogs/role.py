@@ -98,7 +98,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                 if delete_role:
                     await role.delete(reason=f"Deletion custom role by {ctx.author.name} ({ctx.author.id})")
 
-        await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role {role.mention} from user {member.mention}", mention_author=False, allowed_mentions=discord.AllowedMentions.none())
+        await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role @{role.name} from user {member.mention}", mention_author=False, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name="assignrole", aliases=["ar"])
     @check.is_mod()
