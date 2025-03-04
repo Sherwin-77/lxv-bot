@@ -12,6 +12,7 @@ from discord.ext import commands, tasks
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
+import consts
 import models
 from utils import SimplePages, EmbedSource
 
@@ -52,7 +53,7 @@ class LXVBot(commands.Bot):
 
         super().__init__(
             case_insensitive=True,
-            command_prefix=commands.when_mentioned_or("lxv"),  # type: ignore
+            command_prefix=commands.when_mentioned_or(consts.BOT_PREFIX, f"{consts.BOT_PREFIX} "),  # type: ignore
             description="Your LXV Bot",
             intents=intents,
             allowed_mentions=allowed_mentions,
