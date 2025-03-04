@@ -63,7 +63,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                 divider = ctx.guild.get_role(consts.CUSTOM_ROLE_DIVIDER_ID) or await ctx.guild.fetch_role(consts.CUSTOM_ROLE_DIVIDER_ID)
                 role = await ctx.guild.create_role(name=name, reason=f"Creation custom role by {ctx.author.name} ({ctx.author.id})")
 
-                cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == user.id))
+                cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == member.id))
                 cur_role = cursor.scalar_one_or_none()
                 if cur_role is not None:
                     return await ctx.reply("User already has a custom role", delete_after=5)
