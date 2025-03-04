@@ -50,7 +50,7 @@ class Role(commands.GroupCog, group_name="customrole"):
 
     @commands.command(name="createrole", aliases=["cr"])
     @check.is_mod()
-    async def create_role(self, ctx: commands.Context, user: discord.User, *, name: str):
+    async def create_role(self, ctx: commands.Context, member: discord.Member, *, name: str):
         """
         Create and assign custom role from user, set above_role to reposition its role
         """
@@ -68,20 +68,23 @@ class Role(commands.GroupCog, group_name="customrole"):
                 if cur_role is not None:
                     return await ctx.reply("User already has a custom role", delete_after=5)
 
-                session.add(models.CustomRole(user_id=user.id, role_id=role.id))
+                session.add(models.CustomRole(user_id=member.id, role_id=role.id))
                 
                 await role.edit(position=divider.position-1)
+                await member.add_roles(role)
+        
+        await ctx.reply(f"Created & assigned role {role.mention} for user {member.mention}", mention_author=False, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command("removerole", aliases=["rr"])
     @check.is_mod()
-    async def remove_role(self, ctx: commands.Context, user: discord.User, delete_role: bool = False):
+    async def remove_role(self, ctx: commands.Context, member: discord.Member, delete_role: bool = False):
         """
         Remove custom role from user, optionally delete the role
         """
         if ctx.guild is None:
             return
 
-        role_id = await self.retrieve_custom_role_id(user.id)
+        role_id = await self.retrieve_custom_role_id(member.id)
         if role_id is None:
             return await ctx.reply("User does not have a custom role", delete_after=5)
         
@@ -89,26 +92,27 @@ class Role(commands.GroupCog, group_name="customrole"):
         async_session = async_sessionmaker(self.bot.engine)
         async with async_session() as session:
             async with session.begin():
-                await session.execute(delete(models.CustomRole).where(models.CustomRole.user_id == user.id))
+                await session.execute(delete(models.CustomRole).where(models.CustomRole.user_id == member.id))
+                await member.remove_roles(role)
 
                 if delete_role:
                     await role.delete(reason=f"Deletion custom role by {ctx.author.name} ({ctx.author.id})")
 
-        await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role {role.mention} from user {user.mention}", mention_author=False)
+        await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role {role.mention} from user {member.mention}", mention_author=False, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name="assignrole", aliases=["ar"])
     @check.is_mod()
-    async def assign_role(self, ctx: commands.Context, role: discord.Role, user: discord.User):
+    async def assign_role(self, ctx: commands.Context, role: discord.Role, member: discord.Member):
         async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
         async with async_session() as session:
             async with session.begin():
-                cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == user.id))
+                cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == member.id))
                 cur_role = cursor.scalar_one_or_none()
                 if cur_role is not None:
                     if cur_role.role_id != role.id:
                         confirm_embed = discord.Embed(
                             title="Confirm custom role change",
-                            description=f"User {user.mention} already has a custom role <@&{cur_role.role_id}>\n"
+                            description=f"User {member.mention} already has a custom role <@&{cur_role.role_id}>\n"
                             f"Are you sure you want to change it to <@&{role.id}>?",
                         )
                         confirm = ConfirmEmbed(ctx.author.id, confirm_embed)
@@ -118,16 +122,17 @@ class Role(commands.GroupCog, group_name="customrole"):
                             return
                         cur_role.role_id = role.id
                     else:
-                        await ctx.reply(f"User **{user.name}** already has role **{role.name}**")
+                        await ctx.reply(f"User **{member.name}** already has role **{role.name}**")
                         return
                 else:    
-                    cur_role = models.CustomRole(user_id=user.id, role_id=role.id)
+                    cur_role = models.CustomRole(user_id=member.id, role_id=role.id)
 
                 session.add(cur_role)
+                await member.add_roles(role)
 
-        self._custom_role_cache[user.id] = role.id
+        self._custom_role_cache[member.id] = role.id
 
-        await ctx.reply(f"Set role {role.mention} to user {user.mention}", mention_author=False)
+        await ctx.reply(f"Set role {role.mention} to user {member.mention}", mention_author=False, allowed_mentions=discord.AllowedMentions.none())
         
         if self.refresh_cache.is_running():
             self.refresh_cache.restart()
