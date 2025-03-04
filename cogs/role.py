@@ -82,7 +82,7 @@ class Role(commands.GroupCog, group_name="customrole"):
 
         role_id = await self.retrieve_custom_role_id(user.id)
         if role_id is None:
-            return await ctx.reply("User does not have a custom role")
+            return await ctx.reply("User does not have a custom role", delete_after=5)
         
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
         async_session = async_sessionmaker(self.bot.engine)
@@ -93,7 +93,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                 if delete_role:
                     await role.delete(reason=f"Deletion custom role by {ctx.author.name} ({ctx.author.id})")
 
-        await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role {role.mention} from user {user.mention}")
+        await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role {role.mention} from user {user.mention}", mention_author=False)
 
     @commands.command(name="assignrole", aliases=["ar"])
     @check.is_mod()
@@ -126,7 +126,7 @@ class Role(commands.GroupCog, group_name="customrole"):
 
         self._custom_role_cache[user.id] = role.id
 
-        await ctx.reply(f"Set role {role.mention} to user {user.mention}")
+        await ctx.reply(f"Set role {role.mention} to user {user.mention}", mention_author=False)
         
         if self.refresh_cache.is_running():
             self.refresh_cache.restart()
@@ -136,10 +136,10 @@ class Role(commands.GroupCog, group_name="customrole"):
         if ctx.guild is None:
             return
         if len(name) > 32:
-            return await ctx.reply("Role name must be less than 32 characters")
+            return await ctx.reply("Role name must be less than 32 characters", ephemeral=True)
         role_id = await self.retrieve_custom_role_id(ctx.author.id)
         if role_id is None:
-            return await ctx.reply("You do not have a custom role")
+            return await ctx.reply("You do not have a custom role", ephemeral=True)
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
         await role.edit(name=name)
         await ctx.reply(f"Set role name to {role.name}", mention_author=False)
@@ -150,10 +150,10 @@ class Role(commands.GroupCog, group_name="customrole"):
             return
         role_id = await self.retrieve_custom_role_id(ctx.author.id)
         if role_id is None:
-            return await ctx.reply("You do not have a custom role", delete_after=5, ephemeral=True)
+            return await ctx.reply("You do not have a custom role", ephemeral=True)
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
         await role.edit(colour=colour)
-        await ctx.reply(f"Set role colour to {role.colour}", ephemeral=True, mention_author=False)
+        await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
 
 async def setup(bot: LXVBot):
     await bot.add_cog(Role(bot))

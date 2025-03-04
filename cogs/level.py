@@ -91,7 +91,7 @@ class Level(commands.GroupCog, group_name="level"):
         for level, role_id in self.role_assigns:
             embed.add_field(name=f"Level {level}", value=f"<@&{role_id}>", inline=False)
 
-        await ctx.reply(embed=embed)
+        await ctx.reply(embed=embed, mention_author=False)
 
     @commands.command(name="setlevelrole", aliases=["slr"])
     @check.is_mod()
@@ -100,7 +100,7 @@ class Level(commands.GroupCog, group_name="level"):
         Set role to assign at specified level, set -1 to delete
         """
         if level < -1:
-            return await ctx.reply("Invalid level")
+            return await ctx.reply("Invalid level", delete_after=5)
 
         async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
         async with async_session() as session:
@@ -117,9 +117,9 @@ class Level(commands.GroupCog, group_name="level"):
                     else:
                         cur_role.level = level
         if level == -1:
-            await ctx.reply(f"Removed role {role.mention}")
+            await ctx.reply(f"Removed role {role.mention}", mention_author=False)
         else:
-            await ctx.reply(f"Set role {role.mention} to level {level}")
+            await ctx.reply(f"Set role {role.mention} to level {level}", mention_author=False)
         await self.get_setting()
 
 

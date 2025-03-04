@@ -87,12 +87,12 @@ def main():
             async with async_session() as session:
                 async with session.begin():
                     await session.execute(delete(models.Mod).where(models.Mod.id == role.id))
-            await ctx.reply(f"Removed role **{role.name}** from mods")
+            await ctx.reply(f"Removed role **{role.name}** from mods", mention_author=False)
         else:
             async with async_session() as session:
                 async with session.begin():
                     session.add(models.Mod(id=role.id))
-            await ctx.reply(f"Set role **{role.name}** to mod")
+            await ctx.reply(f"Set role **{role.name}** to mod", mention_author=False)
 
     @bot.event
     async def on_member_update(before: discord.Member, after: discord.Member):
