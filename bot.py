@@ -53,7 +53,7 @@ class LXVBot(commands.Bot):
 
         super().__init__(
             case_insensitive=True,
-            command_prefix=commands.when_mentioned_or(consts.BOT_PREFIX, f"{consts.BOT_PREFIX} "),  # type: ignore
+            command_prefix=commands.when_mentioned_or(f"{consts.BOT_PREFIX} ", consts.BOT_PREFIX),  # type: ignore
             description="Your LXV Bot",
             intents=intents,
             allowed_mentions=allowed_mentions,
