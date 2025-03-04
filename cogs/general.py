@@ -38,7 +38,7 @@ class General(commands.Cog):
         """
         Yes ping
         """
-        time0 = datetime.utcnow().replace(tzinfo=None)
+        time0 = discord.utils.utcnow()
         time1 = discord.utils.snowflake_time(ctx.message.id).replace(tzinfo=None)
         ping = round(self.bot.latency * 1000)
         message = await ctx.reply(f":ping_pong: Pong! in: {ping} ms", mention_author=False)
