@@ -57,7 +57,18 @@ class Role(commands.GroupCog, group_name="customrole"):
         if ctx.guild is None:
             return
         
-        role = await ctx.guild.create_role(name=name)
+        async_session = async_sessionmaker(self.bot.engine)
+        async with async_session() as session:
+            async with session.begin():
+                role = await ctx.guild.create_role(name=name, reason=f"Creation custom role by {ctx.author.name} ({ctx.author.id})")
+
+                cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == user.id))
+                cur_role = cursor.scalar_one_or_none()
+                if cur_role is not None:
+                    return await ctx.reply("User already has a custom role", delete_after=5)
+
+                session.add(models.CustomRole(user_id=user.id, role_id=role.id))
+
         await role.edit(position=above_role.position if above_role is not None else 0)
 
     @commands.command("removeassignrole", aliases=["rar"])
@@ -131,7 +142,18 @@ class Role(commands.GroupCog, group_name="customrole"):
             return await ctx.reply("You do not have a custom role")
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
         await role.edit(name=name)
-        await ctx.reply(f"Set role name to {role.name}")
+        await ctx.reply(f"Set role name to {role.name}", mention_author=False)
+
+    @commands.hybrid_command(name="setrolecolour", aliases=["setrolecolor", "src"])
+    async def set_role_colour(self, ctx: commands.Context, colour: discord.Colour):
+        if ctx.guild is None:
+            return
+        role_id = await self.retrieve_custom_role_id(ctx.author.id)
+        if role_id is None:
+            return await ctx.reply("You do not have a custom role", delete_after=5, ephemeral=True)
+        role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
+        await role.edit(colour=colour)
+        await ctx.reply(f"Set role colour to {role.colour}", ephemeral=True, mention_author=False)
 
 async def setup(bot: LXVBot):
     await bot.add_cog(Role(bot))
