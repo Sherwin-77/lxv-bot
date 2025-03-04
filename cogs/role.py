@@ -79,8 +79,9 @@ class Role(commands.GroupCog, group_name="customrole"):
             async with session.begin():
                 await session.execute(delete(models.CustomRole).where(models.CustomRole.user_id == user.id))
 
-        if delete_role:
-            await role.delete()
+                if delete_role:
+                    await role.delete(reason=f"Deletion custom role by {ctx.author.name} ({ctx.author.id})")
+
         await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role {role.mention} from user {user.mention}")
 
     @commands.command(name="assignrole", aliases=["ar"])
