@@ -58,7 +58,7 @@ class LXVBot(commands.Bot):
             intents=intents,
             allowed_mentions=allowed_mentions,
             status=discord.Status.idle,
-            activity=discord.Game(name="lxvhelp"),
+            activity=discord.Game(name=f"{consts.BOT_PREFIX} help"),
         )
 
         db_url = getenv("DB_URL", None)
