@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from os import getenv
 from dotenv import load_dotenv
 
@@ -10,6 +11,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from bot import LXVBot
 import consts
 import models
+
+logger = logging.getLogger(__name__)
 
 def main():
     load_dotenv()
@@ -101,7 +104,7 @@ def main():
             await channel.send(f"**{after.name}** ({after.id}) lost their booster role")  # type: ignore
 
     @bot.event
-    async def on_command_error(ctx, error):
+    async def on_command_error(ctx: commands.Context, error):
         if isinstance(error, commands.errors.CommandNotFound) or hasattr(ctx.command, "on_error"):
             return
         if isinstance(error, commands.errors.DisabledCommand):
@@ -120,11 +123,12 @@ def main():
             or isinstance(error, commands.errors.BadArgument)
             or isinstance(error, commands.errors.MissingRequiredArgument)
         ):
-            return await ctx.reply(error, mention_author=False)
+            return await ctx.reply(str(error), mention_author=False)
         if isinstance(error, commands.errors.UserNotFound):
             return await ctx.reply("User not found", mention_author=False)
-        await bot.send_error_to_owner(error, ctx.channel, ctx.command)
-
+        
+        logger.error("Uncaught error in command %s", ctx.command, exc_info=error)
+        await bot.send_error_to_owner(error, ctx.channel, ctx.command)  # type: ignore
 
     asyncio.run(bot.start(token))
 
