@@ -48,7 +48,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                 
         return None
 
-    @commands.command(name="createassignrole", aliases=["car"])
+    @commands.command(name="createrole", aliases=["cr"])
     @check.is_mod()
     async def create_role(self, ctx: commands.Context, user: discord.User, above_role: Optional[discord.Role] = None, *, name: str):
         """
@@ -71,7 +71,7 @@ class Role(commands.GroupCog, group_name="customrole"):
 
         await role.edit(position=above_role.position if above_role is not None else 0)
 
-    @commands.command("removeassignrole", aliases=["rar"])
+    @commands.command("removerole", aliases=["rr"])
     @check.is_mod()
     async def remove_role(self, ctx: commands.Context, user: discord.User, delete_role: bool = False):
         """
@@ -131,7 +131,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         if self.refresh_cache.is_running():
             self.refresh_cache.restart()
 
-    @commands.hybrid_command(name="setrolename", aliases=["srn"])
+    @commands.hybrid_command(name="name")
     async def set_role_name(self, ctx: commands.Context, *, name: str):
         if ctx.guild is None:
             return
@@ -144,7 +144,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         await role.edit(name=name)
         await ctx.reply(f"Set role name to {role.name}", mention_author=False)
 
-    @commands.hybrid_command(name="setrolecolour", aliases=["setrolecolor", "src"])
+    @commands.hybrid_command(name="color", aliases=["colour"])
     async def set_role_colour(self, ctx: commands.Context, colour: discord.Colour):
         if ctx.guild is None:
             return
