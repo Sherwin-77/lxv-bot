@@ -50,7 +50,7 @@ class Role(commands.GroupCog, group_name="customrole"):
 
     @commands.command(name="createrole", aliases=["cr"])
     @check.is_mod()
-    async def create_role(self, ctx: commands.Context, user: discord.User, above_role: Optional[discord.Role] = None, *, name: str):
+    async def create_role(self, ctx: commands.Context, user: discord.User, *, name: str):
         """
         Create and assign custom role from user, set above_role to reposition its role
         """
@@ -60,6 +60,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         async_session = async_sessionmaker(self.bot.engine)
         async with async_session() as session:
             async with session.begin():
+                divider = ctx.guild.get_role(consts.CUSTOM_ROLE_DIVIDER_ID) or await ctx.guild.fetch_role(consts.CUSTOM_ROLE_DIVIDER_ID)
                 role = await ctx.guild.create_role(name=name, reason=f"Creation custom role by {ctx.author.name} ({ctx.author.id})")
 
                 cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == user.id))
@@ -68,8 +69,8 @@ class Role(commands.GroupCog, group_name="customrole"):
                     return await ctx.reply("User already has a custom role", delete_after=5)
 
                 session.add(models.CustomRole(user_id=user.id, role_id=role.id))
-
-        await role.edit(position=above_role.position if above_role is not None else 0)
+                
+                await role.edit(position=divider.position-1)
 
     @commands.command("removerole", aliases=["rr"])
     @check.is_mod()
