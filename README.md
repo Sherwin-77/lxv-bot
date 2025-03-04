@@ -4,7 +4,7 @@ Discord Bot for LXV server
 
 ## Running
 
-No you don't, this bot is running for specific demand & requirement for server
+No you don't, this bot is running with specific setup & requirement for server
 
 However if you insist, then I think this meme might is perfect for you:
 
