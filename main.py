@@ -72,10 +72,13 @@ def main():
     async def send_error(ctx, error):
         await ctx.reply(f"Failed to send: `{error}`\n" f"`{type(error)}`")
 
-    @bot.hybrid_command(name="setmod", aliases=["sm"])
+    @bot.command(name="setmod", aliases=["sm"])
     async def set_mod(ctx: commands.Context, role: discord.Role, remove: bool = False):
         if ctx.guild is None or ctx.guild.id != consts.GUILD_ID:
-            return await ctx.reply("This command can only be used in the main server", ephemeral=False)
+            return await ctx.reply("This command can only be used in the main server")
+        
+        if not bot.mod_only(ctx):
+            return await ctx.reply("You are not allowed to use this command", ephemeral=True)
         
         async_session = async_sessionmaker(bot.engine)
         if remove:
