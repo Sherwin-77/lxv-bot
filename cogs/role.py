@@ -1,4 +1,5 @@
 from __future__ import annotations
+from io import BytesIO
 import logging
 from typing import TYPE_CHECKING, Dict, Optional
 
@@ -160,6 +161,30 @@ class Role(commands.GroupCog, group_name="customrole"):
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
         await role.edit(colour=colour)
         await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
+    
+    @commands.hybrid_command(name="icon")
+    async def set_role_icon(self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None):
+        """
+        Set role icon
+        """
+        if ctx.guild is None:
+            return
+        await ctx.defer() 
+        role_id = await self.retrieve_custom_role_id(ctx.author.id)
+        if role_id is None:
+            return await ctx.reply("You do not have a custom role", ephemeral=True)
+        role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
+
+        if attachment is None:
+            await role.edit(display_icon=None)
+            await ctx.reply("Removed role icon", mention_author=False)
+        else:
+            if attachment.content_type not in {"image/png", "image/jpg", "image/jpeg"}:
+                return await ctx.reply("Only PNG and JPEG images are supported", ephemeral=True)
+            with BytesIO() as fp:
+                await attachment.save(fp)
+                await role.edit(display_icon=fp.getvalue())
+            await ctx.reply("Successfully set role icon", mention_author=False)
 
 async def setup(bot: LXVBot):
     await bot.add_cog(Role(bot))
