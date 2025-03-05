@@ -7,6 +7,7 @@ from time import time_ns
 from traceback import format_exception
 from typing import Any, Optional, Union
 
+import aiohttp
 import discord
 from discord.ext import commands, tasks
 from sqlalchemy import select, text
@@ -42,6 +43,7 @@ class NewHelpCommand(commands.MinimalHelpCommand):
 
 class LXVBot(commands.Bot):
     owner: discord.User
+    session: aiohttp.ClientSession
 
     disabled_app_command = {}
 
@@ -155,6 +157,9 @@ class LXVBot(commands.Bot):
 
         await self.get_setting()
         logger.info("Setting loaded")
+
+        self.session = aiohttp.ClientSession()
+        logger.info("Session created")
 
         self.refresh_cache.start()
 

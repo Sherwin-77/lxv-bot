@@ -183,11 +183,18 @@ class Role(commands.GroupCog, group_name="customrole"):
                 await role.edit(display_icon=fp.getvalue())
         elif emoji_or_unicode is not None:
             # Typing discord.Emoji is not supported. See: https://github.com/discord/discord-api-docs/discussions/3330
-            emoji = discord.PartialEmoji.from_str(emoji_or_unicode)
-            if emoji.is_custom_emoji():
-                with BytesIO() as fp:
-                    await emoji.save(fp)
-                    await role.edit(display_icon=fp.getvalue())
+            # Using partial emoji require you to fetch full emoji before saving. See: https://github.com/Rapptz/discord.py/issues/8148
+            partial_emoji = discord.PartialEmoji.from_str(emoji_or_unicode)
+            if partial_emoji.is_custom_emoji() and partial_emoji.id is not None:
+                async with self.bot.session.get(partial_emoji.url) as resp:
+                    if resp.status != 200:
+                        return await ctx.reply("Invalid emoji", ephemeral=True)
+                    with BytesIO() as fp:
+                        # Start stream in chunk
+                        async for chunk in resp.content.iter_chunked(1024 * 1024):
+                            fp.write(chunk)
+                        fp.seek(0)
+                        await role.edit(display_icon=fp.getvalue())
             else:
                 await role.edit(display_icon=emoji_or_unicode)
         else:
