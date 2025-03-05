@@ -163,7 +163,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
     
     @commands.hybrid_command(name="icon")
-    async def set_role_icon(self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None):
+    async def set_role_icon(self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None, emoji: Optional[discord.Emoji] = None, unicode: Optional[str] = None):
         """
         Set role icon
         """
@@ -175,16 +175,23 @@ class Role(commands.GroupCog, group_name="customrole"):
             return await ctx.reply("You do not have a custom role", ephemeral=True)
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
 
-        if attachment is None:
-            await role.edit(display_icon=None)
-            await ctx.reply("Removed role icon", mention_author=False)
-        else:
+        if attachment is not None:
             if attachment.content_type not in {"image/png", "image/jpg", "image/jpeg"}:
                 return await ctx.reply("Only PNG and JPEG images are supported", ephemeral=True)
             with BytesIO() as fp:
                 await attachment.save(fp)
                 await role.edit(display_icon=fp.getvalue())
-            await ctx.reply("Successfully set role icon", mention_author=False)
+        elif emoji is not None:
+            with BytesIO() as fp:
+                await emoji.save(fp)
+                await role.edit(display_icon=fp.getvalue())
+        elif unicode is not None:
+            await role.edit(display_icon=unicode)
+        else:
+            await role.edit(display_icon=None)
+            await ctx.reply("Removed role icon", mention_author=False)
+            return
+        await ctx.reply("Successfully set role icon", mention_author=False)
 
 async def setup(bot: LXVBot):
     await bot.add_cog(Role(bot))
