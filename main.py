@@ -114,7 +114,7 @@ def main():
             return await ctx.reply("You are not allowed to use this command", mention_author=False)
         if isinstance(error, commands.errors.CommandOnCooldown):
             return await ctx.reply(
-                f"{error} <:angeryV2:810860324248616960>", mention_author=False, delete_after=error.retry_after
+                f"{error} <a:Asheepupout:1345524571448807524>", mention_author=False, delete_after=error.retry_after
             )
         if (
             isinstance(error, commands.errors.NotOwner)
@@ -128,6 +128,10 @@ def main():
         
         logger.error("Uncaught error in command %s", ctx.command, exc_info=error)
         await bot.send_error_to_owner(error, ctx.channel, ctx.command)  # type: ignore
+        if ctx.interaction is not None and ctx.interaction.response.is_done():
+            return
+        
+        await ctx.reply("Something went wrong, please try again. If this keeps happening, contact staff", delete_after=5, ephemeral=True, mention_author=False)
 
     asyncio.run(bot.start(token))
 

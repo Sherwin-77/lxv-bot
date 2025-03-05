@@ -173,34 +173,37 @@ class Role(commands.GroupCog, group_name="customrole"):
         role_id = await self.retrieve_custom_role_id(ctx.author.id)
         if role_id is None:
             return await ctx.reply("You do not have a custom role", ephemeral=True)
-        role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
+        try: 
+            role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
 
-        if attachment is not None:
-            if attachment.content_type not in {"image/png", "image/jpg", "image/jpeg"}:
-                return await ctx.reply("Only PNG and JPEG images are supported", ephemeral=True)
-            with BytesIO() as fp:
-                await attachment.save(fp)
-                await role.edit(display_icon=fp.getvalue())
-        elif emoji_or_unicode is not None:
-            # Typing discord.Emoji is not supported. See: https://github.com/discord/discord-api-docs/discussions/3330
-            # Using partial emoji require you to fetch full emoji before saving. See: https://github.com/Rapptz/discord.py/issues/8148
-            partial_emoji = discord.PartialEmoji.from_str(emoji_or_unicode)
-            if partial_emoji.is_custom_emoji() and partial_emoji.id is not None:
-                async with self.bot.session.get(partial_emoji.url) as resp:
-                    if resp.status != 200:
-                        return await ctx.reply("Invalid emoji", ephemeral=True)
-                    with BytesIO() as fp:
-                        # Start stream in chunk
-                        async for chunk in resp.content.iter_chunked(1024 * 1024):
-                            fp.write(chunk)
-                        fp.seek(0)
-                        await role.edit(display_icon=fp.getvalue())
+            if attachment is not None:
+                if attachment.content_type not in {"image/png", "image/jpg", "image/jpeg"}:
+                    return await ctx.reply("Only PNG and JPEG images are supported", ephemeral=True)
+                with BytesIO() as fp:
+                    await attachment.save(fp)
+                    await role.edit(display_icon=fp.getvalue())
+            elif emoji_or_unicode is not None:
+                # Typing discord.Emoji is not supported. See: https://github.com/discord/discord-api-docs/discussions/3330
+                # Using partial emoji require you to fetch full emoji before saving. See: https://github.com/Rapptz/discord.py/issues/8148
+                partial_emoji = discord.PartialEmoji.from_str(emoji_or_unicode)
+                if partial_emoji.is_custom_emoji() and partial_emoji.id is not None:
+                    async with self.bot.session.get(partial_emoji.url) as resp:
+                        if resp.status != 200:
+                            return await ctx.reply("Invalid emoji", ephemeral=True)
+                        with BytesIO() as fp:
+                            # Start stream in chunk
+                            async for chunk in resp.content.iter_chunked(1024 * 1024):
+                                fp.write(chunk)
+                            fp.seek(0)
+                            await role.edit(display_icon=fp.getvalue())
+                else:
+                    await role.edit(display_icon=emoji_or_unicode)
             else:
-                await role.edit(display_icon=emoji_or_unicode)
-        else:
-            await role.edit(display_icon=None)
-            await ctx.reply("Removed role icon", mention_author=False)
-            return
+                await role.edit(display_icon=None)
+                await ctx.reply("Removed role icon", mention_author=False)
+                return
+        except (discord.errors.NotFound, discord.errors.HTTPException) as e:
+            return await ctx.reply(f"Failed to set role icon: `{e}`", ephemeral=True)
         await ctx.reply("Successfully set role icon", mention_author=False)
 
 async def setup(bot: LXVBot):
