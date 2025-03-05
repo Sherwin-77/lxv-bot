@@ -204,6 +204,12 @@ class LXVBot(commands.Bot):
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:
             return
+
+        # Set first segment to lowercase to allow lowercase command
+        segments = message.content.split(" ")
+        segments[0] = segments[0].lower()
+        message.content = " ".join(segments)
+
         return await super().on_message(message)
     
     @tasks.loop(minutes=1)
