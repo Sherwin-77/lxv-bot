@@ -163,7 +163,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
     
     @commands.hybrid_command(name="icon")
-    async def set_role_icon(self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None, emoji: Optional[discord.Emoji] = None, unicode: Optional[str] = None):
+    async def set_role_icon(self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None, emoji_or_unicode: Optional[str] = None):
         """
         Set role icon
         """
@@ -181,12 +181,15 @@ class Role(commands.GroupCog, group_name="customrole"):
             with BytesIO() as fp:
                 await attachment.save(fp)
                 await role.edit(display_icon=fp.getvalue())
-        elif emoji is not None:
-            with BytesIO() as fp:
-                await emoji.save(fp)
-                await role.edit(display_icon=fp.getvalue())
-        elif unicode is not None:
-            await role.edit(display_icon=unicode)
+        elif emoji_or_unicode is not None:
+            # Typing discord.Emoji is not supported. See: https://github.com/discord/discord-api-docs/discussions/3330
+            emoji = discord.PartialEmoji.from_str(emoji_or_unicode)
+            if emoji.is_custom_emoji():
+                with BytesIO() as fp:
+                    await emoji.save(fp)
+                    await role.edit(display_icon=fp.getvalue())
+            else:
+                await role.edit(display_icon=emoji_or_unicode)
         else:
             await role.edit(display_icon=None)
             await ctx.reply("Removed role icon", mention_author=False)
