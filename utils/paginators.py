@@ -1,8 +1,11 @@
 import discord
 from discord.ext import menus, commands
+from sqlalchemy import func, select, Select, UnaryExpression
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
-from typing import Callable, Optional
+from typing import Callable, Optional, TypeVar, Any
 
+_T = TypeVar("_T", bound=Any)
 
 class SimplePages(discord.ui.View, menus.MenuPages):
     """Pagination with ui button"""
@@ -70,29 +73,41 @@ class SimplePages(discord.ui.View, menus.MenuPages):
 
 # https://github.com/Rapptz/discord-ext-menus#pagination
 class EmbedSource(menus.ListPageSource):
-    def __init__(self, entries, per_page=4, title="Title", format_caller: Optional[Callable] = None):
+    def __init__(self, entries, embed: Optional[discord.Embed] = None, format_caller: Optional[Callable] = None, *, per_page = 10):
         super().__init__(entries, per_page=per_page)
-        self.title = title
+        if embed is None:
+            embed = discord.Embed(color=discord.Colour.random())
+        self.embed = embed
         self.format_caller = format_caller
 
     async def format_page(self, menu: menus.MenuPages, page):
         offset = menu.current_page * self.per_page  # type: ignore
-        embed = discord.Embed(color=discord.Colour.random())
-        embed.description = '\n'.join(f"{i+1}. {v}" for i, v in enumerate(page, start=offset))
-        if self.title is not None:
-            embed.title = self.title
-        if self.format_caller is not None:
-            embed.description = self.format_caller(page)
-        return embed
-
-class DataEmbedSource(EmbedSource):
-    async def format_page(self, menu: menus.MenuPages, page):
-        offset = menu.current_page * self.per_page
-        embed = discord.Embed(color=discord.Colour.random())
-        if self.title is not None:
-            embed.title = self.title
-        if self.format_caller is not None:
-            embed.description = '\n'.join(self.format_caller(i, v) for i, v in enumerate(page, start=offset))
+        if self.format_caller is None:
+            self.embed.description = '\n'.join(f"{i+1}. {v}" for i, v in enumerate(page, start=offset))
         else:
-            embed.description = '\n'.join(f"{i+1}. {v}" for i, v in enumerate(page, start=offset))
-        return embed
+            self.embed.description = self.format_caller(self, menu, page)
+        return self.embed
+    
+class QueryEmbedSource(EmbedSource):
+    def __init__(self, query: Select[_T], order_by, async_session: async_sessionmaker[AsyncSession], format_caller: Callable, embed: discord.Embed | None = None, *, per_page = 10):
+        super().__init__([], embed, format_caller, per_page=per_page)
+        self.query = query.order_by(order_by)
+        self.async_session = async_session
+
+    async def prepare(self):
+        async with self.async_session() as session:
+            cursor = await session.execute(self.query.with_only_columns(func.count()))
+            counts = cursor.scalar_one()
+            self._max_pages = counts // self.per_page + (counts % self.per_page != 0)
+
+    async def get_page(self, page_number):
+        async with self.async_session() as session:
+            cursor = await session.execute(self.query.limit(self.per_page).offset(page_number * self.per_page))
+            return cursor.scalars().all()
+        
+    async def format_page(self, menu: menus.MenuPages, page):
+        if self.format_caller is None:
+            self.embed.description = '\n'.join(f"{i+1}. {v}" for i, v in enumerate(page))
+        else:
+            self.embed.description = self.format_caller(self, menu, page)
+        return self.embed
