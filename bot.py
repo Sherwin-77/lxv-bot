@@ -38,7 +38,8 @@ class NewHelpCommand(commands.MinimalHelpCommand):
             )
         else:
             ctx = self.context
-            menu = SimplePages(source=EmbedSource(self.paginator.pages, 1, "Help", lambda pg: pg))
+            embed = discord.Embed(title="Help", color=discord.Colour.random())
+            menu = SimplePages(source=EmbedSource(self.paginator.pages, embed, lambda pg: pg, per_page=1))
             await menu.start(ctx)
 
 class LXVBot(commands.Bot):
@@ -73,6 +74,7 @@ class LXVBot(commands.Bot):
         self.launch_timestamp = time_ns() // 1000000000
         self.xp_cooldowns = set()
         self.engine = create_async_engine(db_url, echo=self.is_dev)
+        self.async_session = async_sessionmaker(self.engine)
 
         self.mod_ids = set()
         self.user_mods = set()
@@ -136,8 +138,7 @@ class LXVBot(commands.Bot):
         return await super().get_prefix(message)
     
     async def get_setting(self):
-        async_session = async_sessionmaker(self.engine, expire_on_commit=False)
-        async with async_session() as session:
+        async with self.async_session() as session:
             mods = await session.execute(select(models.Mod.id))
             self.mod_ids = {row[0] for row in mods}
 

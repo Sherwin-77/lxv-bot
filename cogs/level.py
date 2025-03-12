@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy import delete, select, func
 
 import check
 import consts
@@ -32,8 +31,7 @@ class Level(commands.GroupCog, group_name="level"):
         await self.get_setting()
 
     async def get_setting(self):
-        async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
-        async with async_session() as session:
+        async with self.bot.async_session() as session:
             self.role_assigns = []
             self.role_level_ids = []
             role_assigns = await session.execute(select(models.RoleAssign))
@@ -102,8 +100,7 @@ class Level(commands.GroupCog, group_name="level"):
         if level < -1:
             return await ctx.reply("Invalid level", delete_after=5)
 
-        async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
-        async with async_session() as session:
+        async with self.bot.async_session() as session:
             async with session.begin():
                 if level == -1:
                     # Delete role with id

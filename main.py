@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 import discord
 from discord.ext import commands
 from sqlalchemy import delete, text
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from bot import LXVBot
 import check
@@ -81,15 +80,14 @@ def main():
     async def set_mod(ctx: commands.Context, role: discord.Role, remove: bool = False):
         if ctx.guild is None or ctx.guild.id != consts.GUILD_ID:
             return await ctx.reply("This command can only be used in the main server")
-        
-        async_session = async_sessionmaker(bot.engine)
+
         if remove:
-            async with async_session() as session:
+            async with bot.async_session() as session:
                 async with session.begin():
                     await session.execute(delete(models.Mod).where(models.Mod.id == role.id))
             await ctx.reply(f"Removed role **{role.name}** from mods", mention_author=False)
         else:
-            async with async_session() as session:
+            async with bot.async_session() as session:
                 async with session.begin():
                     session.add(models.Mod(id=role.id))
             await ctx.reply(f"Set role **{role.name}** to mod", mention_author=False)

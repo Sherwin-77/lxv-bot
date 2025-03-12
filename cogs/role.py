@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Dict, Optional
 import discord
 from discord.ext import commands, tasks
 from sqlalchemy import select, delete
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 import check
 import consts
@@ -38,8 +37,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         if member_id in self._custom_role_cache:
             return self._custom_role_cache[member_id]
         
-        async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
-        async with async_session() as session:
+        async with self.bot.async_session() as session:
             async with session.begin():
                 cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == member_id))
                 cur_role = cursor.scalar_one_or_none()
@@ -58,8 +56,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         if ctx.guild is None:
             return
         
-        async_session = async_sessionmaker(self.bot.engine)
-        async with async_session() as session:
+        async with self.bot.async_session() as session:
             async with session.begin():
                 cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == member.id))
                 cur_role = cursor.scalar_one_or_none()
@@ -90,8 +87,7 @@ class Role(commands.GroupCog, group_name="customrole"):
             return await ctx.reply("User does not have a custom role", delete_after=5)
         
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
-        async_session = async_sessionmaker(self.bot.engine)
-        async with async_session() as session:
+        async with self.bot.async_session() as session:
             async with session.begin():
                 await session.execute(delete(models.CustomRole).where(models.CustomRole.user_id == member.id))
                 await member.remove_roles(role)
@@ -104,8 +100,7 @@ class Role(commands.GroupCog, group_name="customrole"):
     @commands.command(name="assignrole", aliases=["ar"])
     @check.is_mod()
     async def assign_role(self, ctx: commands.Context, role: discord.Role, member: discord.Member):
-        async_session = async_sessionmaker(self.bot.engine, expire_on_commit=False)
-        async with async_session() as session:
+        async with self.bot.async_session() as session:
             async with session.begin():
                 cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == member.id))
                 cur_role = cursor.scalar_one_or_none()
