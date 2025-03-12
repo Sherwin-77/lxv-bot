@@ -16,7 +16,7 @@ class SimplePages(discord.ui.View, menus.MenuPages):
         self._source = source
         self.current_page = 0
         self.delete_message_after = delete_message_after
-        self.button = discord.ui.Button(disabled=True, label=str(self.current_page))
+        self.button = discord.ui.Button(disabled=True, label=str(self.current_page+1))
 
     async def start(self, ctx, *, channel=None, wait=False):
         self.add_item(self.button)
