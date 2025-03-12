@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import logging.config
 from os import getenv
 from dotenv import load_dotenv
 
@@ -22,6 +23,7 @@ def main():
         raise ValueError("BOT_TOKEN is not set")
 
     discord.utils.setup_logging()
+    logging.config.fileConfig("logger.conf", disable_existing_loggers=False)
 
     bot = LXVBot()
 
