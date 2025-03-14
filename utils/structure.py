@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 import asyncio
-from typing import Optional, Type
+from typing import Optional
 
 
 class Node:
@@ -10,6 +10,7 @@ class Node:
         self.next_ = next_
         self.prev = prev
         self.data = data
+
 
 class LinkedList:
     def __init__(self) -> None:
@@ -40,6 +41,7 @@ class LinkedList:
         # Abusing garbage collector
         self.head = self.tail = None
 
+
 class AsyncLinkedList(LinkedList):
     def __init__(self) -> None:
         super().__init__()
@@ -52,4 +54,3 @@ class AsyncLinkedList(LinkedList):
     async def add_node(self, node: Node):
         async with self.lock:
             super().add_node(node)
-
