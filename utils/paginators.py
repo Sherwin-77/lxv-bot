@@ -112,7 +112,7 @@ class QueryEmbedSource(EmbedSource):
 
     async def prepare(self):
         async with self.async_session() as session:
-            cursor = await session.execute(self.query.with_only_columns(func.count()))
+            cursor = await session.execute(self.query.order_by(None).with_only_columns(func.count(), maintain_column_froms=True))
             counts = cursor.scalar_one()
             self._max_pages = counts // self.per_page + (counts % self.per_page != 0)
 
