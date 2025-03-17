@@ -122,7 +122,7 @@ class QueryEmbedSource(EmbedSource):
 
     async def format_page(self, menu: menus.MenuPages, page):
         if self.format_caller is None:
-            self.embed.description = '\n'.join(f"{i+1}. {v}" for i, v in enumerate(page))
+            self.embed.description = '\n'.join(f"{i+1}. {v.id}" for i, v in enumerate(page))
         else:
             self.embed.description = self.format_caller(self, menu, page)
         return self.embed
