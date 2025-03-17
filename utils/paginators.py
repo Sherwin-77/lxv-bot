@@ -91,6 +91,7 @@ class EmbedSource(menus.ListPageSource):
             self.embed.description = '\n'.join(f"{i+1}. {v}" for i, v in enumerate(page, start=offset))
         else:
             self.embed.description = self.format_caller(self, menu, page)
+        self.embed.set_footer(text=f"Page {menu.current_page+1}/{self.get_max_pages()}")
         return self.embed
 
 
@@ -125,4 +126,5 @@ class QueryEmbedSource(EmbedSource):
             self.embed.description = '\n'.join(f"{i+1}. {v.id}" for i, v in enumerate(page))
         else:
             self.embed.description = self.format_caller(self, menu, page)
+        self.embed.set_footer(text=f"Page {menu.current_page+1}/{self.get_max_pages()}")
         return self.embed
