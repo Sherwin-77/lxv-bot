@@ -148,6 +148,19 @@ class Role(commands.GroupCog, group_name="customrole"):
 
     @commands.hybrid_command(name="color", aliases=["colour"])
     async def set_role_colour(self, ctx: commands.Context, colour: discord.Colour):
+        """
+        Set role colour
+
+        The following formats are accepted:
+
+        - ``0x<hex>``
+        - ``#<hex>``
+        - ``0x#<hex>``
+        - ``rgb(<number>, <number>, <number>)``
+
+        Like CSS, ``<number>`` can be either 0-255 or 0-100% and ``<hex>`` can be
+        either a 6 digit hex number or a 3 digit hex shortcut (e.g. #FFF).
+        """
         if ctx.guild is None:
             return
         role_id = await self.retrieve_custom_role_id(ctx.author.id)
@@ -157,10 +170,13 @@ class Role(commands.GroupCog, group_name="customrole"):
         await role.edit(colour=colour)
         await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
     
-    @commands.hybrid_command(name="icon")
-    async def set_role_icon(self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None, emoji_or_unicode: Optional[str] = None):
+    @commands.group(name="icon")
+    async def set_role_icon(self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None, emoji_or_unicode_or_reset: Optional[str] = None):
         """
-        Set role icon
+        Set role icon. Either upload file or send emoji (file uploaded will be prioritized if both exists)
+
+        Example Usage:
+        /icon <emoji> or /icon <file> (or call icon with uploaded file if not using slash command)
         """
         if ctx.guild is None:
             return
@@ -177,10 +193,10 @@ class Role(commands.GroupCog, group_name="customrole"):
                 with BytesIO() as fp:
                     await attachment.save(fp)
                     await role.edit(display_icon=fp.getvalue())
-            elif emoji_or_unicode is not None:
+            elif emoji_or_unicode_or_reset is not None:
                 # Typing discord.Emoji is not supported. See: https://github.com/discord/discord-api-docs/discussions/3330
                 # Using partial emoji require you to fetch full emoji before saving. See: https://github.com/Rapptz/discord.py/issues/8148
-                partial_emoji = discord.PartialEmoji.from_str(emoji_or_unicode)
+                partial_emoji = discord.PartialEmoji.from_str(emoji_or_unicode_or_reset)
                 if partial_emoji.is_custom_emoji() and partial_emoji.id is not None:
                     async with self.bot.session.get(partial_emoji.url) as resp:
                         if resp.status != 200:
@@ -191,11 +207,15 @@ class Role(commands.GroupCog, group_name="customrole"):
                                 fp.write(chunk)
                             fp.seek(0)
                             await role.edit(display_icon=fp.getvalue())
+                elif emoji_or_unicode_or_reset.lower() == "reset":
+                    await role.edit(display_icon=None)
+                    await ctx.reply("Successfully reset role icon", mention_author=False)
+                    return
                 else:
-                    await role.edit(display_icon=emoji_or_unicode)
+                    await role.edit(display_icon=emoji_or_unicode_or_reset)
             else:
-                await role.edit(display_icon=None)
-                await ctx.reply("Removed role icon", mention_author=False)
+                # Invoke help command
+                await ctx.send_help(ctx.command)
                 return
         except (discord.errors.NotFound, discord.errors.HTTPException) as e:
             return await ctx.reply(f"Failed to set role icon: `{e}`", ephemeral=True)
