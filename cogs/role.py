@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, Optional
 
 import discord
 from discord.ext import commands, tasks
-from sqlalchemy import select, delete
+from sqlalchemy import func, select, delete
 
 import check
 import consts
@@ -33,10 +33,20 @@ class Role(commands.GroupCog, group_name="customrole"):
     async def refresh_cache(self):
         self._custom_role_cache = {}
 
+    @tasks.loop(hours=12)
+    async def report_roles(self):
+        ch = guild.get_channel(765818685922213948)  # type: ignore
+        if ch is None:
+            return await self.bot.send_owner(f"Your lxv channel is missing. Previously channel id {765818685922213948}")
+        async with self.bot.async_session() as session:
+            cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
+            count = cursor.scalar()
+            await ch.send(f"Total custom roles: {count}")
+
     async def retrieve_custom_role_id(self, member_id: int) -> Optional[int]:
         if member_id in self._custom_role_cache:
             return self._custom_role_cache[member_id]
-        
+
         async with self.bot.async_session() as session:
             async with session.begin():
                 cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == member_id))
@@ -44,7 +54,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                 if cur_role is not None:
                     self._custom_role_cache[member_id] = cur_role.role_id
                     return cur_role.role_id
-                
+
         return None
 
     @commands.command(name="createrole", aliases=["cr"])
@@ -55,23 +65,31 @@ class Role(commands.GroupCog, group_name="customrole"):
         """
         if ctx.guild is None:
             return
-        
+
         async with self.bot.async_session() as session:
             async with session.begin():
                 cursor = await session.execute(select(models.CustomRole).where(models.CustomRole.user_id == member.id))
                 cur_role = cursor.scalar_one_or_none()
                 if cur_role is not None:
                     return await ctx.reply("User already has a custom role", delete_after=5)
-                
-                divider = ctx.guild.get_role(consts.CUSTOM_ROLE_DIVIDER_ID) or await ctx.guild.fetch_role(consts.CUSTOM_ROLE_DIVIDER_ID)
-                role = await ctx.guild.create_role(name=name, reason=f"Creation custom role by {ctx.author.name} ({ctx.author.id})")
+
+                divider = ctx.guild.get_role(consts.CUSTOM_ROLE_DIVIDER_ID) or await ctx.guild.fetch_role(
+                    consts.CUSTOM_ROLE_DIVIDER_ID
+                )
+                role = await ctx.guild.create_role(
+                    name=name, reason=f"Creation custom role by {ctx.author.name} ({ctx.author.id})"
+                )
 
                 session.add(models.CustomRole(user_id=member.id, role_id=role.id))
-                
-                await role.edit(position=divider.position-1)
+
+                await role.edit(position=divider.position - 1)
                 await member.add_roles(role)
-        
-        await ctx.reply(f"Created & assigned role {role.mention} for user {member.mention}", mention_author=False, allowed_mentions=discord.AllowedMentions.none())
+
+        await ctx.reply(
+            f"Created & assigned role {role.mention} for user {member.mention}",
+            mention_author=False,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @commands.command("removerole", aliases=["rr"])
     @check.is_mod()
@@ -85,7 +103,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         role_id = await self.retrieve_custom_role_id(member.id)
         if role_id is None:
             return await ctx.reply("User does not have a custom role", delete_after=5)
-        
+
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
         async with self.bot.async_session() as session:
             async with session.begin():
@@ -95,7 +113,11 @@ class Role(commands.GroupCog, group_name="customrole"):
                 if delete_role:
                     await role.delete(reason=f"Deletion custom role by {ctx.author.name} ({ctx.author.id})")
 
-        await ctx.reply(f"{'Deleted' if delete_role else 'Removed'} role @{role.name} from user {member.mention}", mention_author=False, allowed_mentions=discord.AllowedMentions.none())
+        await ctx.reply(
+            f"{'Deleted' if delete_role else 'Removed'} role @{role.name} from user {member.mention}",
+            mention_author=False,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @commands.command(name="assignrole", aliases=["ar"])
     @check.is_mod()
@@ -120,7 +142,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                     else:
                         await ctx.reply(f"User **{member.name}** already has role **{role.name}**")
                         return
-                else:    
+                else:
                     cur_role = models.CustomRole(user_id=member.id, role_id=role.id)
 
                 session.add(cur_role)
@@ -128,8 +150,12 @@ class Role(commands.GroupCog, group_name="customrole"):
 
         self._custom_role_cache[member.id] = role.id
 
-        await ctx.reply(f"Set role {role.mention} to user {member.mention}", mention_author=False, allowed_mentions=discord.AllowedMentions.none())
-        
+        await ctx.reply(
+            f"Set role {role.mention} to user {member.mention}",
+            mention_author=False,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
         if self.refresh_cache.is_running():
             self.refresh_cache.restart()
 
@@ -169,9 +195,11 @@ class Role(commands.GroupCog, group_name="customrole"):
         role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
         await role.edit(colour=colour)
         await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
-    
-    @commands.group(name="icon")
-    async def set_role_icon(self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None, emoji_or_unicode_or_reset: Optional[str] = None):
+
+    @commands.hybrid_command(name="icon")
+    async def set_role_icon(
+        self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None, emoji_or_unicode: Optional[str] = None
+    ):
         """
         Set role icon. Either upload file or send emoji (file uploaded will be prioritized if both exists)
 
@@ -180,11 +208,11 @@ class Role(commands.GroupCog, group_name="customrole"):
         """
         if ctx.guild is None:
             return
-        await ctx.defer() 
+        await ctx.defer()
         role_id = await self.retrieve_custom_role_id(ctx.author.id)
         if role_id is None:
             return await ctx.reply("You do not have a custom role", ephemeral=True)
-        try: 
+        try:
             role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
 
             if attachment is not None:
@@ -220,6 +248,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         except (discord.errors.NotFound, discord.errors.HTTPException) as e:
             return await ctx.reply(f"Failed to set role icon: `{e}`", ephemeral=True)
         await ctx.reply("Successfully set role icon", mention_author=False)
+
 
 async def setup(bot: LXVBot):
     await bot.add_cog(Role(bot))
