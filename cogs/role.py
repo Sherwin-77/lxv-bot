@@ -28,6 +28,7 @@ class Role(commands.GroupCog, group_name="customrole"):
 
     async def cog_load(self):
         self.refresh_cache.start()
+        self.report_roles.start()
 
     @tasks.loop(seconds=60)
     async def refresh_cache(self):
