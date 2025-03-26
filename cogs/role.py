@@ -36,13 +36,14 @@ class Role(commands.GroupCog, group_name="customrole"):
 
     @tasks.loop(hours=12)
     async def report_roles(self):
+        guild = self.bot.get_guild(consts.GUILD_ID)
         ch = guild.get_channel(765818685922213948)  # type: ignore
         if ch is None:
             return await self.bot.send_owner(f"Your lxv channel is missing. Previously channel id {765818685922213948}")
         async with self.bot.async_session() as session:
             cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
             count = cursor.scalar()
-            await ch.send(f"Total custom roles: {count}")
+            await ch.send(f"Total custom roles: {count}")  # type: ignore
 
     async def retrieve_custom_role_id(self, member_id: int) -> Optional[int]:
         if member_id in self._custom_role_cache:
@@ -199,7 +200,10 @@ class Role(commands.GroupCog, group_name="customrole"):
 
     @commands.hybrid_command(name="icon")
     async def set_role_icon(
-        self, ctx: commands.Context, attachment: Optional[discord.Attachment] = None, emoji_or_unicode: Optional[str] = None
+        self,
+        ctx: commands.Context,
+        attachment: Optional[discord.Attachment] = None,
+        emoji_or_unicode_or_reset: Optional[str] = None,
     ):
         """
         Set role icon. Either upload file or send emoji (file uploaded will be prioritized if both exists)
