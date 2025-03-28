@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, select
 
 import check
 import consts
@@ -37,7 +37,8 @@ class Level(commands.GroupCog, group_name="level"):
             role_assigns = await session.execute(select(models.RoleAssign))
             for row in role_assigns.scalars():
                 bisect.insort(self.role_assigns, (row.level, row.role_id))
-                self.role_level_ids.append(row.role_id)
+                if row.level % 10 == 0:
+                    self.role_level_ids.append(row.role_id)
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
