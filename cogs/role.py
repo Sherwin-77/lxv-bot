@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, Optional
 
 import discord
 from discord.ext import commands, tasks
-from sqlalchemy import func, select, delete
+from sqlalchemy import JSON, bindparam, func, select, delete, text
 
 import check
 import consts
@@ -43,7 +43,24 @@ class Role(commands.GroupCog, group_name="customrole"):
         async with self.bot.async_session() as session:
             cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
             count = cursor.scalar()
-            await ch.send(f"Total custom roles: {count}")  # type: ignore
+
+        async with self.bot.engine.connect() as conn:
+            await conn.execute(
+                text("INSERT INTO health_reports (data, created_at) VALUES (:data, NOW())")
+                .bindparams(
+                    bindparam("data", value={"total_custom_roles": count}, type_=JSON),
+                )
+            )
+            await conn.execute(
+                text("DELETE FROM health_reports WHERE created_at < NOW() - INTERVAL '7 DAY'")
+            )
+            await conn.commit()
+
+        await ch.send(f"Total custom roles: {count}")  # type: ignore
+
+    @report_roles.before_loop
+    async def before_report_roles(self):
+        await self.bot.wait_until_ready()
 
     async def retrieve_custom_role_id(self, member_id: int) -> Optional[int]:
         if member_id in self._custom_role_cache:
