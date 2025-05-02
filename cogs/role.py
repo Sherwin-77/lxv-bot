@@ -112,7 +112,7 @@ class Role(commands.GroupCog, group_name="customrole"):
 
     @commands.command("removerole", aliases=["rr"])
     @check.is_mod()
-    async def remove_role(self, ctx: commands.Context, member: discord.Member, delete_role: bool = False):
+    async def remove_role(self, ctx: commands.Context, member: discord.Member, delete_role: bool = False, bypass_error: bool = False):
         """
         Remove custom role from user, optionally delete the role
         """
@@ -123,17 +123,20 @@ class Role(commands.GroupCog, group_name="customrole"):
         if role_id is None:
             return await ctx.reply("User does not have a custom role", delete_after=5)
 
-        role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
+        role = ctx.guild.get_role(role_id) 
+        if not bypass_error and role is None:
+            role = await ctx.guild.fetch_role(role_id)
         async with self.bot.async_session() as session:
             async with session.begin():
                 await session.execute(delete(models.CustomRole).where(models.CustomRole.user_id == member.id))
-                await member.remove_roles(role)
+                if role:
+                    await member.remove_roles(role) 
 
-                if delete_role:
+                if delete_role and role is not None:
                     await role.delete(reason=f"Deletion custom role by {ctx.author.name} ({ctx.author.id})")
 
         await ctx.reply(
-            f"{'Deleted' if delete_role else 'Removed'} role @{role.name} from user {member.mention}",
+            f"{'Deleted' if delete_role else 'Removed'} role @{role.name if role else 'Unknown Role'} from user {member.mention}",
             mention_author=False,
             allowed_mentions=discord.AllowedMentions.none(),
         )
