@@ -67,6 +67,10 @@ class LXVBot(commands.Bot):
         db_url = getenv("DB_URL", None)
         if db_url is None:
             raise ValueError("DB_URL is not set")
+        
+        local_db_url = getenv("LOCAL_DB_URL", None)
+        if local_db_url is None:
+            raise ValueError("LOCAL_DB_URL is not set")
 
         self.bot_mode = getenv("ENV", PRODUCTION)
         self.help_command = NewHelpCommand()
@@ -75,6 +79,9 @@ class LXVBot(commands.Bot):
         self.xp_cooldowns = set()
         self.engine = create_async_engine(db_url, echo=self.is_dev)
         self.async_session = async_sessionmaker(self.engine)
+
+        self.lengine = create_async_engine(local_db_url, echo=self.is_dev)
+        self.lasync_session = async_sessionmaker(self.lengine)
 
         self.mod_ids = set()
         self.user_mods = set()

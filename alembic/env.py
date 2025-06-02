@@ -9,6 +9,8 @@ from sqlalchemy import pool
 
 from alembic import context
 
+from models.base import LocalBase, OnlineBase
+
 load_dotenv()
 
 # this is the Alembic Config object, which provides
@@ -31,7 +33,26 @@ target_metadata = None
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-DB_URL = os.getenv("DB_URL")
+target = "local"
+
+cmd_opts = context.config.cmd_opts
+if cmd_opts and hasattr(cmd_opts, 'x') and cmd_opts.x is not None:
+    opts = cmd_opts.x
+    for opt in opts:
+        if opt.startswith("target="):
+            target = opt.split("=")[1]
+            break
+
+if target == "local":
+    DB_URL = os.getenv("LOCAL_DB_URL")
+    target_metadata = LocalBase.metadata
+    version_table = "alembic_version_local"
+else:
+    DB_URL = os.getenv("DB_URL")
+    target_metadata = OnlineBase.metadata
+    version_table = "alembic_version"
+
+print(os.getenv("LOCAL_DB_URL"))
 
 
 def run_migrations_offline() -> None:
