@@ -3,7 +3,6 @@ from logging.config import fileConfig
 import os
 
 from dotenv import load_dotenv
-from sqlalchemy import engine_from_config
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy import pool
 
@@ -47,12 +46,16 @@ if target == "local":
     DB_URL = os.getenv("LOCAL_DB_URL")
     target_metadata = LocalBase.metadata
     version_table = "alembic_version_local"
+    context.script.__dict__.pop('_version_locations', None)  # type: ignore
+    context.script.version_locations = ["alembic/versions/local"]
 else:
     DB_URL = os.getenv("DB_URL")
     target_metadata = OnlineBase.metadata
     version_table = "alembic_version"
+    context.script.__dict__.pop('_version_locations', None)  # type: ignore
+    context.script.version_locations = ["alembic/versions/online"]
 
-print(os.getenv("LOCAL_DB_URL"))
+print(context.script.version_locations)
 
 
 def run_migrations_offline() -> None:
@@ -70,6 +73,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=DB_URL,
         target_metadata=target_metadata,
+        version_table=version_table,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -77,8 +81,9 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
+
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(connection=connection, version_table=version_table, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
