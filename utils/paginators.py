@@ -1,6 +1,6 @@
 import discord
 from discord.ext import menus, commands
-from sqlalchemy import func, Select
+from sqlalchemy import func, Select, select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from typing import Callable, Optional, TypeVar, Any
@@ -20,6 +20,11 @@ class SimplePages(discord.ui.View, menus.MenuPages):
         self.current_page = 0
         self.delete_message_after = delete_message_after
         self.button = discord.ui.Button(disabled=True, label=str(self.current_page + 1))
+
+    async def send_initial_message(self, ctx: commands.Context, channel):
+        page = await self._source.get_page(0)
+        kwargs = await self._get_kwargs_from_page(page)
+        return await ctx.reply(**kwargs, mention_author=False)  # type: ignore
 
     async def start(self, ctx, *, channel=None, wait=False):
         self.add_item(self.button)
@@ -112,14 +117,16 @@ class QueryEmbedSource(EmbedSource):
 
     async def prepare(self):
         async with self.async_session() as session:
-            cursor = await session.execute(self.query.order_by(None).with_only_columns(func.count(), maintain_column_froms=True))
+            cursor = await session.execute(
+                select(func.count()).select_from(self.query.with_only_columns(text("1")).subquery())
+            )
             counts = cursor.scalar_one()
             self._max_pages = counts // self.per_page + (counts % self.per_page != 0)
 
     async def get_page(self, page_number):
         async with self.async_session() as session:
             cursor = await session.execute(self.query.limit(self.per_page).offset(page_number * self.per_page))
-            return cursor.scalars().all()
+            return cursor.all()
 
     async def format_page(self, menu: menus.MenuPages, page):
         if self.format_caller is None:
