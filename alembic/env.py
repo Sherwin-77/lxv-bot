@@ -46,16 +46,14 @@ if target == "local":
     DB_URL = os.getenv("LOCAL_DB_URL")
     target_metadata = LocalBase.metadata
     version_table = "alembic_version_local"
-    context.script.__dict__.pop('_version_locations', None)  # type: ignore
+    context.script.__dict__.pop('_version_locations', None)
     context.script.version_locations = ["alembic/versions/local"]
 else:
     DB_URL = os.getenv("DB_URL")
     target_metadata = OnlineBase.metadata
     version_table = "alembic_version"
-    context.script.__dict__.pop('_version_locations', None)  # type: ignore
+    context.script.__dict__.pop('_version_locations', None)
     context.script.version_locations = ["alembic/versions/online"]
-
-print(context.script.version_locations)
 
 
 def run_migrations_offline() -> None:
