@@ -1,27 +1,35 @@
+import datetime
 from glob import glob
 from io import BytesIO
+import json
 import logging
 from os import getenv
 from os.path import relpath
+import random
 from time import time_ns
 from traceback import format_exception
 from typing import Any, Optional, Union
+import zoneinfo
 
 import aiohttp
 import discord
 from discord.ext import commands, tasks
+from redis.asyncio import Redis
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
+import configs
 import consts
 import models
 from utils import SimplePages, EmbedSource
+import utils
 
 DEV = "dev"
 PRODUCTION = "production"
 
 
 logger = logging.getLogger(__name__)
+
 
 class NewHelpCommand(commands.MinimalHelpCommand):
     def __init__(self, **options):
@@ -42,6 +50,7 @@ class NewHelpCommand(commands.MinimalHelpCommand):
             menu = SimplePages(source=EmbedSource(self.paginator.pages, embed, lambda pg: pg, per_page=1))
             await menu.start(ctx)
 
+
 class LXVBot(commands.Bot):
     owner: discord.User
     session: aiohttp.ClientSession
@@ -49,10 +58,16 @@ class LXVBot(commands.Bot):
     disabled_app_command = {}
 
     def __init__(self):
+        self.bot_mode = getenv("ENV", PRODUCTION)
+
         allowed_mentions = discord.AllowedMentions(everyone=False, roles=False, users=True)
 
         intents = discord.Intents.all()
         intents.presences = False
+
+        with open("config.json", "r") as f:
+            t = json.load(f)
+            self.config = configs.Config.from_dict(t)
 
         super().__init__(
             case_insensitive=True,
@@ -67,35 +82,50 @@ class LXVBot(commands.Bot):
         db_url = getenv("DB_URL", None)
         if db_url is None:
             raise ValueError("DB_URL is not set")
-        
+
         local_db_url = getenv("LOCAL_DB_URL", None)
         if local_db_url is None:
             raise ValueError("LOCAL_DB_URL is not set")
 
-        self.bot_mode = getenv("ENV", PRODUCTION)
+        redis_host = getenv("REDIS_HOST", None)
+        redis_port = getenv("REDIS_PORT", None)
+        redis_db = getenv("REDIS_DB", None)
+        if redis_host is None or redis_port is None or redis_db is None:
+            raise ValueError("REDIS_HOST, REDIS_PORT, or REDIS_DB is not set")
+
+        redis_port = int(redis_port)
+        redis_db = int(redis_db)
+
+        self.rng = random.SystemRandom()
         self.help_command = NewHelpCommand()
         self._BotBase__cogs = commands.core._CaseInsensitiveDict()
         self.launch_timestamp = time_ns() // 1000000000
         self.xp_cooldowns = set()
         self.engine = create_async_engine(db_url, echo=self.is_dev)
-        self.async_session = async_sessionmaker(self.engine)
+        self.async_session = async_sessionmaker(self.engine, expire_on_commit=False)
 
         self.lengine = create_async_engine(local_db_url, echo=self.is_dev)
-        self.lasync_session = async_sessionmaker(self.lengine)
+        self.lasync_session = async_sessionmaker(self.lengine, expire_on_commit=False)
 
+        self.redis = Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
         self.mod_ids = set()
         self.user_mods = set()
 
     @property
     def is_dev(self) -> bool:
         return self.bot_mode == DEV
-    
+
+    def get_day_id(self, date: datetime.datetime) -> int:
+        tz = zoneinfo.ZoneInfo("US/Pacific")
+        base_date = datetime.datetime(2020, 1, 1, tzinfo=tz)
+        return utils.date.absolute_day_diff(date, base_date, tz)
+
     async def is_owner(self, user: discord.abc.User):
         if user.id == 436376194166816770:
             return True
-        
+
         return await super().is_owner(user)
-    
+
     def is_mod(self, member: discord.Member, include_bot_owner: bool = True) -> bool:
         if member.bot:
             return False
@@ -112,13 +142,13 @@ class LXVBot(commands.Bot):
                     self.user_mods.add(member.id)
                     break
         return allowed
-    
+
     def mod_only(self, ctx: commands.Context, include_bot_owner: bool = True) -> bool:
         if not isinstance(ctx.author, discord.Member):
             return False
 
         return self.is_mod(ctx.author, include_bot_owner)
-    
+
     async def get_prefix(self, message: discord.Message, /):
         """|coro|
 
@@ -143,7 +173,7 @@ class LXVBot(commands.Bot):
         if self.is_dev:
             return ["test!"]
         return await super().get_prefix(message)
-    
+
     async def get_setting(self):
         async with self.async_session() as session:
             mods = await session.execute(select(models.Mod.id))
@@ -174,7 +204,7 @@ class LXVBot(commands.Bot):
     async def close(self) -> None:
         await self.engine.dispose()
         return await super().close()
-    
+
     async def get_db_ping(self) -> Optional[int]:
         if self.engine is None:
             return None
@@ -183,13 +213,16 @@ class LXVBot(commands.Bot):
             await conn.execute(text("SELECT 1"))
         t1 = time_ns()
         return (t1 - t0) // 10000000
-    
+
     async def send_owner(self, message=None, **kwargs) -> None:
         channel = await self.owner.create_dm()
         await channel.send(message, **kwargs)
-    
+
     async def send_error_to_owner(
-        self, error: Exception, channel: Union[discord.TextChannel, discord.Thread], command: Optional[Union[commands.Command[Any, ..., Any], str]]
+        self,
+        error: Exception,
+        channel: Union[discord.TextChannel, discord.Thread],
+        command: Optional[Union[commands.Command[Any, ..., Any], str]],
     ) -> None:
         channel_name = getattr(channel, "name", "Unknown")
         output = ''.join(format_exception(type(error), error, error.__traceback__))
@@ -220,12 +253,12 @@ class LXVBot(commands.Bot):
             message.content = " ".join(segments)
 
         return await super().on_message(message)
-    
+
     @tasks.loop(minutes=1)
     async def refresh_cache(self):
         self.user_mods = set()
 
-    
+
 def slash_is_enabled():
     def wrapper(interaction: discord.Interaction):
         if interaction.command is None:

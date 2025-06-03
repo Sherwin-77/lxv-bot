@@ -1,0 +1,13 @@
+{
+  "owo_prefix": "h",
+  "owo_id": 408785106942164992,
+  "guild_id": "714152739252338749",
+  "cooldown": {
+    "owo": 10.0,
+    "owo_penalty": 8.0,
+    "max_owo_penalty": 600,
+    "hunt": 15.0,
+    "battle": 15.0,
+    "pray_curse": 300.0
+  }
+}
