@@ -196,7 +196,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         await ctx.reply(f"Set role name to {role.name}", mention_author=False)
 
     @commands.hybrid_command(name="color", aliases=["colour"])
-    async def set_role_colour(self, ctx: commands.Context, colour: discord.Colour, secondary_colour: Optional[discord.Colour] = None):
+    async def set_role_colour(self, ctx: commands.Context, colour: discord.Colour, secondary_colour: Optional[str] = None):
         """
         Set role colour
 
@@ -220,10 +220,15 @@ class Role(commands.GroupCog, group_name="customrole"):
             await role.edit(colour=colour)
             await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
         else:
+            second_colour: discord.Colour = discord.Colour.from_str(secondary_colour)
             # TODO: Clean up after doc update: https://github.com/discord/discord-api-docs/pull/7549
             url = f"/guilds/{ctx.guild.id}/roles/{role_id}"
-            await self.bot.http.request(discord.http.Route("PATCH", url), json={"colors": {"primary_color": colour.value, "secondary_color": secondary_colour.value}})
-            await ctx.reply(f"Set role colour to {colour} - {secondary_colour}", mention_author=False)
+            await self.bot.http.request(discord.http.Route("PATCH", url), json={"colors": {"primary_color": colour.value, "secondary_color": second_colour.value}})
+            await ctx.reply(f"Set role colour to {colour} - {second_colour}", mention_author=False)
+
+    @set_role_colour.error
+    async def set_role_colour_error(self, ctx: commands.Context, error: commands.CommandError):
+        await ctx.reply(f"Failed to set role colour: {error}", mention_author=False)
 
     @commands.hybrid_command(name="icon")
     async def set_role_icon(
