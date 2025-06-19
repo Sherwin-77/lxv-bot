@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Dict, Optional
 
 import discord
 from discord.ext import commands, tasks
+import discord.http
 from sqlalchemy import JSON, bindparam, func, select, delete, text
 
 import check
@@ -195,7 +196,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         await ctx.reply(f"Set role name to {role.name}", mention_author=False)
 
     @commands.hybrid_command(name="color", aliases=["colour"])
-    async def set_role_colour(self, ctx: commands.Context, colour: discord.Colour):
+    async def set_role_colour(self, ctx: commands.Context, colour: discord.Colour, secondary_colour: Optional[discord.Colour] = None):
         """
         Set role colour
 
@@ -214,9 +215,15 @@ class Role(commands.GroupCog, group_name="customrole"):
         role_id = await self.retrieve_custom_role_id(ctx.author.id)
         if role_id is None:
             return await ctx.reply("You do not have a custom role", ephemeral=True)
-        role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
-        await role.edit(colour=colour)
-        await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
+        if secondary_colour is None:
+            role = ctx.guild.get_role(role_id) or await ctx.guild.fetch_role(role_id)
+            await role.edit(colour=colour)
+            await ctx.reply(f"Set role colour to {role.colour}", mention_author=False)
+        else:
+            # TODO: Clean up after doc update: https://github.com/discord/discord-api-docs/pull/7549
+            url = f"/guilds/{ctx.guild.id}/roles/{role_id}"
+            await self.bot.http.request(discord.http.Route("PATCH", url), json={"colors": {"primary_color": colour.value, "secondary_color": secondary_colour.value}})
+            await ctx.reply(f"Set role colour to {colour} - {secondary_colour}", mention_author=False)
 
     @commands.hybrid_command(name="icon")
     async def set_role_icon(
