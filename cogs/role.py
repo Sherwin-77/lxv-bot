@@ -58,7 +58,8 @@ class Role(commands.GroupCog, group_name="customrole"):
                     await conn.execute(
                         text("DELETE FROM health_reports WHERE created_at < NOW() - INTERVAL '7 DAY'")
                     )
-                break
+                await ch.send(f"Total custom roles: {count}")  # type: ignore
+                return
             except InterfaceError as exc:
                 logger.warning("Failed to report roles due to database connection error", exc_info=exc)
                 await self.bot.engine.dispose()
@@ -70,8 +71,6 @@ class Role(commands.GroupCog, group_name="customrole"):
                 logger.exception("Failed to report roles", exc_info=exc)
                 await self.bot.send_owner(f"Unexpected error while reporting roles: {exc}")
                 return
-
-        await ch.send(f"Total custom roles: {count}")  # type: ignore
 
     @report_roles.before_loop
     async def before_report_roles(self):
