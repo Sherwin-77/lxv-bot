@@ -49,7 +49,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                     cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
                     count = cursor.scalar()
 
-                # begin() auto-commits on successful exit and rolls back on error.
+                # begin() commits the transaction on successful exit and rolls back on error.
                 async with self.bot.engine.begin() as conn:
                     await conn.execute(
                         text("INSERT INTO health_reports (data, created_at) VALUES (:data, NOW())")
@@ -60,8 +60,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                     await conn.execute(
                         text("DELETE FROM health_reports WHERE created_at < NOW() - INTERVAL '7 DAY'")
                     )
-                await ch.send(f"Total custom roles: {count}")  # type: ignore
-                return
+                break
             except InterfaceError as exc:
                 logger.warning("Failed to report roles due to database connection error", exc_info=exc)
                 await self.bot.engine.dispose()
@@ -73,6 +72,13 @@ class Role(commands.GroupCog, group_name="customrole"):
                 logger.exception("Failed to report roles")
                 await self.bot.send_owner(f"Unexpected error while reporting roles: {exc}")
                 return
+        else:
+            return
+
+        try:
+            await ch.send(f"Total custom roles: {count}")  # type: ignore
+        except discord.HTTPException as exc:
+            logger.warning("Failed to send role report message", exc_info=exc)
 
     @report_roles.before_loop
     async def before_report_roles(self):
