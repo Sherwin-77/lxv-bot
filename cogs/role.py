@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands, tasks
 import discord.http
 from sqlalchemy import JSON, bindparam, func, select, delete, text
+from sqlalchemy.exc import InterfaceError
 
 import check
 import consts
@@ -41,21 +42,38 @@ class Role(commands.GroupCog, group_name="customrole"):
         ch = guild.get_channel(765818685922213948)  # type: ignore
         if ch is None:
             return await self.bot.send_owner(f"Your lxv channel is missing. Previously channel id {765818685922213948}")
-        async with self.bot.async_session() as session:
-            cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
-            count = cursor.scalar()
+        count = None
+        for attempt in range(2):
+            try:
+                async with self.bot.async_session() as session:
+                    cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
+                    count = cursor.scalar()
 
-        async with self.bot.engine.connect() as conn:
-            await conn.execute(
-                text("INSERT INTO health_reports (data, created_at) VALUES (:data, NOW())")
-                .bindparams(
-                    bindparam("data", value={"total_custom_roles": count}, type_=JSON),
-                )
-            )
-            await conn.execute(
-                text("DELETE FROM health_reports WHERE created_at < NOW() - INTERVAL '7 DAY'")
-            )
-            await conn.commit()
+                async with self.bot.engine.begin() as conn:
+                    await conn.execute(
+                        text("INSERT INTO health_reports (data, created_at) VALUES (:data, NOW())")
+                        .bindparams(
+                            bindparam("data", value={"total_custom_roles": count}, type_=JSON),
+                        )
+                    )
+                    await conn.execute(
+                        text("DELETE FROM health_reports WHERE created_at < NOW() - INTERVAL '7 DAY'")
+                    )
+                break
+            except InterfaceError as exc:
+                logger.warning("Failed to report roles due to database connection error", exc_info=exc)
+                await self.bot.engine.dispose()
+                if attempt == 0:
+                    continue
+                await self.bot.send_owner(f"Database connection error while reporting roles: {exc}")
+                return
+            except Exception as exc:
+                logger.exception("Failed to report roles", exc_info=exc)
+                await self.bot.send_owner(f"Unexpected error while reporting roles: {exc}")
+                return
+
+        if count is None:
+            return
 
         await ch.send(f"Total custom roles: {count}")  # type: ignore
 

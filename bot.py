@@ -101,10 +101,10 @@ class LXVBot(commands.Bot):
         self._BotBase__cogs = commands.core._CaseInsensitiveDict()
         self.launch_timestamp = time_ns() // 1000000000
         self.xp_cooldowns = set()
-        self.engine = create_async_engine(db_url, echo=self.is_dev)
+        self.engine = create_async_engine(db_url, echo=self.is_dev, pool_pre_ping=True, pool_recycle=3600)
         self.async_session = async_sessionmaker(self.engine, expire_on_commit=False)
 
-        self.lengine = create_async_engine(local_db_url, echo=self.is_dev)
+        self.lengine = create_async_engine(local_db_url, echo=self.is_dev, pool_pre_ping=True, pool_recycle=3600)
         self.lasync_session = async_sessionmaker(self.lengine, expire_on_commit=False)
 
         self.redis = Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
