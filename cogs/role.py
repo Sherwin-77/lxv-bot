@@ -42,12 +42,11 @@ class Role(commands.GroupCog, group_name="customrole"):
         ch = guild.get_channel(765818685922213948)  # type: ignore
         if ch is None:
             return await self.bot.send_owner(f"Your lxv channel is missing. Previously channel id {765818685922213948}")
-        count = 0
         for attempt in range(2):
             try:
                 async with self.bot.async_session() as session:
                     cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
-                    count = cursor.scalar() or 0
+                    count = cursor.scalar()
 
                 async with self.bot.engine.begin() as conn:
                     await conn.execute(
