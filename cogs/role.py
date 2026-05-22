@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from bot import LXVBot
 
 logger = logging.getLogger(__name__)
+REPORT_ROLES_RETRY_ATTEMPTS = 2
 
 
 class Role(commands.GroupCog, group_name="customrole"):
@@ -42,7 +43,7 @@ class Role(commands.GroupCog, group_name="customrole"):
         ch = guild.get_channel(765818685922213948)  # type: ignore
         if ch is None:
             return await self.bot.send_owner(f"Your lxv channel is missing. Previously channel id {765818685922213948}")
-        for attempt in range(2):
+        for attempt in range(REPORT_ROLES_RETRY_ATTEMPTS):
             try:
                 async with self.bot.async_session() as session:
                     cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
