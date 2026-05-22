@@ -64,7 +64,7 @@ class Role(commands.GroupCog, group_name="customrole"):
             except InterfaceError as exc:
                 logger.warning("Failed to report roles due to database connection error", exc_info=exc)
                 await self.bot.engine.dispose()
-                if attempt == 0:
+                if attempt < REPORT_ROLES_RETRY_ATTEMPTS - 1:
                     continue
                 await self.bot.send_owner(f"Database connection error while reporting roles: {exc}")
                 return
