@@ -49,6 +49,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                     cursor = await session.execute(select(func.count(models.CustomRole.user_id)))
                     count = cursor.scalar()
 
+                # begin() auto-commits on successful exit and rolls back on error.
                 async with self.bot.engine.begin() as conn:
                     await conn.execute(
                         text("INSERT INTO health_reports (data, created_at) VALUES (:data, NOW())")
@@ -69,7 +70,7 @@ class Role(commands.GroupCog, group_name="customrole"):
                 await self.bot.send_owner(f"Database connection error while reporting roles: {exc}")
                 return
             except Exception as exc:
-                logger.exception("Failed to report roles", exc_info=exc)
+                logger.exception("Failed to report roles")
                 await self.bot.send_owner(f"Unexpected error while reporting roles: {exc}")
                 return
 
